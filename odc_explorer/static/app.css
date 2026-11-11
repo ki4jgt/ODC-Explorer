@@ -292,6 +292,27 @@ button { font: inherit; color: inherit; }
   .adult-toggle, .ipfs-link { padding: 0 10px; }
 }
 
+/* ---- sidebar: catalog tree ---- */
+#rail-tree { margin: 0 0 26px; font-size: 14px; }
+.tree-root { display: block; padding: 6px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-2); }
+.tree-root:hover { background: var(--paper-2); color: var(--ink); }
+.tree-root.here { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ctree { list-style: none; margin: 0; padding: 0; }
+.ctree li { position: relative; }
+.ctree li > a { display: flex; align-items: baseline; gap: 8px; padding: 5px 10px 5px calc(26px + var(--depth) * 14px);
+  border-radius: 8px; text-decoration: none; color: var(--ink-2); }
+.ctree li > a:hover { background: var(--paper-2); color: var(--ink); }
+.ctree a .c { font: 12px var(--mono); color: var(--ink-3); min-width: 2.6em; }
+.ctree a .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ctree a.on-path { color: var(--ink); font-weight: 600; }
+.ctree a.here { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ctree a.here .c { color: var(--accent); }
+.ctree a.is-empty { color: var(--ink-3); }
+.ctree .has-domains { width: 6px; height: 6px; border-radius: 50%; background: var(--brass); flex: none; align-self: center; }
+.ctree .twisty { position: absolute; left: calc(4px + var(--depth) * 14px); top: 4px; width: 20px; height: 22px; padding: 0;
+  border: none; background: none; color: var(--ink-3); font-size: 11px; line-height: 22px; text-align: center; cursor: pointer; border-radius: 5px; }
+.ctree button.twisty:hover { color: var(--ink); background: var(--paper-2); }
+
 /* ---- project links: plain, quiet text at the bottom of the sidebar ---- */
 .rail-links { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 0 10px; }
 .rail-links a { font-size: 12px; color: color-mix(in srgb, var(--accent) 65%, var(--ink-3)); text-decoration: none; }

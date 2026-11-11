@@ -34,8 +34,8 @@ server.
 
 - 📚 **Browse like a library.** Start at any category and read 25 domains at a time.
   Pages dive into its subcategories, then move on to the next sibling categories,
-  all the way to the end of the catalog. The header and sidebar follow along,
-  showing the subject you're on and the shelf it sits on.
+  all the way to the end of the catalog. The header follows the subject you're
+  on, and the sidebar is a tree of the whole catalog that opens to where you are.
 - 🔞 **Adult content hidden by default.** Call number `0` and everything under it
   stay hidden until you flip the 18+ switch, which your browser remembers.
 - 🔢 **Jump to any call number.** Type `05`, `ABC.DEF.G` or `abcdefg` to go
@@ -56,8 +56,8 @@ server.
 - 🐧 **Installs per user on Linux** with an app-menu launcher, no `sudo` required.
 
 <p align="center">
-  <img src="docs/screenshots/browse.png" alt="Browsing from Reference: the header and sidebar show Dictionaries on the Reference shelf, with ranked domains below" width="49%">
-  <img src="docs/screenshots/browse-dark.png" alt="A later page in the dark theme: the header and sidebar have moved on to Entertainment › Gaming › Web" width="49%">
+  <img src="docs/screenshots/browse.png" alt="Browsing Dictionaries: the sidebar's catalog tree is open at Reference with Dictionaries highlighted, and ranked domains fill the page" width="49%">
+  <img src="docs/screenshots/browse-dark.png" alt="Search Engines in the dark theme: the catalog tree is open at Reference, and the page runs on into the next shelf, Languages" width="49%">
 </p>
 
 ## Getting started
@@ -188,12 +188,18 @@ from the latest published version of the catalog. Pages never change on their
 own: to see a newly published version, navigate, reload, or click the link to the
 page you're on. The last page is marked **End of the catalog**.
 
-The **header** and the **sidebar** follow the subject of each page: the category
-its first domain belongs to. The sidebar shows where that is (*Location*) and the
-shelf it sits on, meaning the categories alongside it, with the current one
-highlighted and its own subcategories nested underneath. When **Next 25** carries
-you into a new subject, both change with it. The header also links back to where
-you started reading.
+The **header** follows the subject of each page: the category its first domain
+belongs to. When **Next 25** carries you into a new subject, it changes with it,
+and it links back to where you started reading.
+
+The **sidebar** is a tree of the whole catalog. The branches leading to the
+page's subject open automatically, with that category highlighted. As you scroll
+through the results, the highlight follows the category you're reading, opening
+its branch if needed and scrolling the sidebar to keep it in view. Branches it
+opened for you close again once you've moved on. **▸** next to any category opens
+or closes its branch without leaving the page, and branches you open yourself
+stay open until you close them. A dot marks categories with domains of their
+own; empty shelves are dimmed.
 
 Keyboard: <kbd>/</kbd> focuses the call-number box, and <kbd>←</kbd> /
 <kbd>→</kbd> go to the previous or next page.

@@ -71,6 +71,7 @@
     const { parts, q } = parseHash();
     window.scrollTo({ top: 0 });
     stopIpfsRefresh();
+    stopScrollSpy();
     if (parts[0] === "ipfs") return renderIpfs(stale);
     if (parts[0] === "c") {
       const call = parts[1] && parts[1] !== "-" ? parts[1] : "";
@@ -108,6 +109,8 @@
     const t = e.target;
     if (t.closest("#theme")) return toggleTheme();
     if (t.closest("[data-adult-toggle]")) return toggleAdult();
+    const twisty = t.closest("[data-twisty]");
+    if (twisty) return toggleBranch(twisty.dataset.twisty);
     const donate = t.closest("[data-donate]");
     if (donate) return answerDonate(donate.dataset.donate);
     const copy = t.closest("[data-copy]");
@@ -249,31 +252,111 @@
     return catCache.get(key);
   }
 
-  // Sidebar: the breadcrumb to the current category, then the shelf it sits on
-  // (its siblings, with it highlighted and its own subcategories nested).
-  // ``parent`` is null at "All shelves".
-  function rail(cur, parent) {
-    const link = (c, cls = "") => `<li><a class="${cls}" href="${shelfHref(c.call)}"><span class="c">${esc(c.call)}</span>${esc(c.desc || "Untitled")}</a></li>`;
-    const crumbs = cur.breadcrumbs;
-    const loc = `<li><a href="${browseHref("")}" class="${crumbs.length ? "" : "here"}"><span class="c">—</span>All shelves</a></li>` +
-      crumbs.map((c, i) => link(c, i === crumbs.length - 1 ? "here" : "")).join("");
-    const shelf = parent ? parent.children : cur.children;
-    const title = parent?.call ? `${esc(parent.call)} ${esc(parent.desc || "Untitled")}` : "Top shelves";
-    const items = shelf.map((c) => (parent && c.call === cur.call)
-      ? link(c, "depth-1 here") + cur.children.map((k) => link(k, "depth-2")).join("")
-      : link(c, "depth-1")).join("");
-    return `<h4>Location</h4><ul class="tree">${loc}</ul>
-      <h4>${title}</h4><ul class="tree">${items || `<li><span class="tree muted">No categories here.</span></li>`}</ul>
-      <div class="rail-links" id="rail-links">${railLinks()}</div>`;
+  // Sidebar: a tree of the whole catalog. The path to the highlighted category
+  // opens automatically and closes again once the highlight moves on. Branches
+  // the reader opens with ▸ stay open until the reader closes them; a path
+  // branch the reader closes stays closed until the highlight moves. Children
+  // load on demand through the cached getCategory(). Categories with domains of
+  // their own get a dot; empty ones are dimmed.
+  const userOpen = new Set();     // opened by the reader
+  const userClosed = new Set();   // path branches the reader closed (reset when the highlight moves)
+  let railCurrent = "";
+  const onPath = (b) => b !== "" && railCurrent.startsWith(b);
+  const isOpen = (b) => (userOpen.has(b) || onPath(b)) && !userClosed.has(b);
+  function setRailCurrent(b) {
+    if (b !== railCurrent) userClosed.clear();
+    railCurrent = b;
+  }
+
+  function treeNode(c, kids, depth) {
+    const b = bare(c.call), open = isOpen(b);
+    const onPath = railCurrent.startsWith(b), here = railCurrent === b;
+    const twisty = c.has_children
+      ? `<button type="button" class="twisty" data-twisty="${esc(b)}" aria-expanded="${open}"
+           aria-label="${open ? "Close" : "Open"} ${esc(c.desc || c.call)}">${open ? "▾" : "▸"}</button>`
+      : `<span class="twisty" aria-hidden="true"></span>`;
+    const cls = [here && "here", onPath && !here && "on-path", !c.has_domains && !c.has_children && "is-empty"].filter(Boolean).join(" ");
+    const sub = open && kids.has(b) ? treeList(kids.get(b), kids, depth + 1) : "";
+    return `<li style="--depth:${depth}">${twisty}<a class="${cls}" href="${shelfHref(c.call)}"${here ? ' aria-current="page"' : ""}>
+        <span class="c">${esc(c.call)}</span><span class="name">${esc(c.desc || "Untitled")}</span>${c.has_domains ? `<i class="has-domains" title="Has domains of its own"></i>` : ""}</a>${sub}</li>`;
+  }
+  const treeList = (children, kids, depth) =>
+    `<ul class="ctree">${children.map((c) => treeNode(c, kids, depth)).join("")}</ul>`;
+
+  // ``reveal``: scroll the sidebar (only the sidebar, never the page) so the
+  // highlighted category is in view. Not done when the reader opens or closes
+  // a branch, so the tree doesn't jump under the pointer.
+  async function drawTree(stale = () => false, reveal = false) {
+    const path = [...railCurrent].map((_, i) => railCurrent.slice(0, i + 1));
+    const branches = ["", ...new Set([...path, ...userOpen])].filter((b) => b === "" || isOpen(b));
+    const results = await Promise.allSettled(branches.map((b) => getCategory(b)));
+    if (stale() || !$("#rail-tree")) return;
+    const kids = new Map();
+    results.forEach((r, i) => { if (r.status === "fulfilled") kids.set(branches[i], r.value.children); });
+    const top = kids.get("") || [];
+    $("#rail-tree").innerHTML = `<a class="tree-root${railCurrent ? "" : " here"}" href="${browseHref("")}">All shelves</a>` +
+      (top.length ? treeList(top, kids, 0) : `<p class="tree muted">No categories here.</p>`);
+    if (reveal) revealHere();
+  }
+
+  function revealHere() {
+    const rail = $("#rail"), here = $("#rail-tree .here");
+    if (!rail || !here || rail.scrollHeight <= rail.clientHeight) return;   // sidebar doesn't scroll
+    const box = rail.getBoundingClientRect(), item = here.getBoundingClientRect();
+    const margin = Math.min(80, box.height / 4);
+    let delta = 0;
+    if (item.top < box.top + margin) delta = item.top - (box.top + margin);
+    else if (item.bottom > box.bottom - margin) delta = item.bottom - (box.bottom - margin);
+    if (delta) rail.scrollBy({ top: delta, behavior: "smooth" });
+  }
+
+  async function toggleBranch(b) {
+    if (isOpen(b)) {
+      userOpen.delete(b);
+      if (onPath(b)) userClosed.add(b);
+    } else {
+      userOpen.add(b);
+      userClosed.delete(b);
+    }
+    await drawTree();
+    $(`[data-twisty="${CSS.escape(b)}"]`)?.focus();
   }
 
   async function drawRail(b, stale) {
-    try {
-      const [cur, parent] = await Promise.all([getCategory(b), b ? getCategory(b.slice(0, -1)) : null]);
-      if (stale() || !$("#rail")) return null;
-      $("#rail").innerHTML = rail(cur, parent);
-      return cur;
-    } catch { return null; }
+    setRailCurrent(b);
+    if (!$("#rail")) return null;
+    $("#rail").innerHTML = `<h4>The catalog</h4><nav id="rail-tree" aria-label="Catalog"></nav>
+      <div class="rail-links" id="rail-links">${railLinks()}</div>`;
+    const [cur] = await Promise.all([getCategory(b).catch(() => null), drawTree(stale, true)]);
+    return stale() ? null : cur;
+  }
+
+  // While you scroll the results, the tree highlights the category whose
+  // section you're in: the last category header scrolled past (below the top
+  // bar), or the first one at the top of the page. Its branch opens if needed.
+  let scrollSpy = null;
+  function stopScrollSpy() {
+    if (scrollSpy) window.removeEventListener("scroll", scrollSpy);
+    scrollSpy = null;
+  }
+  function startScrollSpy(stale) {
+    stopScrollSpy();
+    let waiting = false;
+    const check = () => {
+      waiting = false;
+      if (stale()) return stopScrollSpy();
+      const marks = $$(".shelf-mark[data-call]");
+      if (!marks.length) return;
+      const line = topbar.offsetHeight + 24;
+      let pick = marks[0];
+      for (const m of marks) { if (m.getBoundingClientRect().top <= line) pick = m; else break; }
+      const b = pick.dataset.call;
+      if (b === railCurrent) return;
+      setRailCurrent(b);
+      drawTree(stale, true);
+    };
+    scrollSpy = () => { if (!waiting) { waiting = true; setTimeout(check, 80); } };   // at most every 80 ms
+    window.addEventListener("scroll", scrollSpy, { passive: true });
   }
 
   // Header card for the subject the page is on (the same category as the
@@ -325,6 +408,7 @@
     if (stale()) return;
     $("#head").innerHTML = headCard(cur, start);
     document.title = `${cur.call ? `${cur.call} ${cur.desc || ""}` : "All shelves"} · Open Domain Catalog`;
+    startScrollSpy(stale);
 
     function shelfTag(b) {
       if (!fromB || b === fromB) return "";
@@ -335,7 +419,7 @@
 
     function drawFlow(f) {
       let html = f.warnings?.length
-        ? `<div class="notice"><strong>Skipped malformed blocks:</strong> ${f.warnings.map(esc).join("; ")}</div>` : "";
+        ? `<div class="notice"><strong>Skipped blocks that couldn't be read or failed validation:</strong> ${f.warnings.map(esc).join("; ")}</div>` : "";
       if (!f.items.length) {
         html += `<div class="empty"><h3>End of the catalog</h3>
           ${offset || pageNo > 1 ? "There are no more domains after this point in the catalog."
