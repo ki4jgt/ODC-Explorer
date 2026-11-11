@@ -36,8 +36,8 @@ server.
   Pages dive into its subcategories, then move on to the next sibling categories,
   all the way to the end of the catalog. The header and sidebar follow along,
   showing the subject you're on and the shelf it sits on.
-- 🔞 **Hide adult content.** One switch hides call number `0` and everything
-  under it, remembered in your browser.
+- 🔞 **Adult content hidden by default.** Call number `0` and everything under it
+  stay hidden until you flip the 18+ switch, which your browser remembers.
 - 🔢 **Jump to any call number.** Type `05`, `ABC.DEF.G` or `abcdefg` to go
   straight there.
 - 🌐 **Real IPFS, built in.** No daemon to install and no HTTP gateways. The
@@ -198,13 +198,14 @@ you started reading.
 Keyboard: <kbd>/</kbd> focuses the call-number box, and <kbd>←</kbd> /
 <kbd>→</kbd> go to the previous or next page.
 
-### Hiding adult content
+### Adult content
 
-The **18+** switch in the top bar, also on the home page, hides call number `0`
-(*Adult*) and everything under it. The home drawers, sidebars and pages skip that
+Adult content, call number `0` (*Adult*) and everything under it, is **hidden by
+default**. While it's hidden, the home drawers, sidebars and pages skip that
 branch entirely, and pages still hold 25 domains each. Opening something inside
-`0` while it's hidden shows a notice with a button to show it. The setting is
-stored in your browser, so it applies per browser rather than per server.
+`0` shows a notice with a button to show it. The **18+** switch in the top bar,
+also on the home page, shows or hides it. The setting is stored in your browser,
+so it applies per browser rather than per server.
 
 ### Project links
 

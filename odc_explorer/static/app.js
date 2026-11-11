@@ -89,7 +89,8 @@
     store.set("odc-theme", dark ? "light" : "dark");
   }
 
-  let hideAdult = store.get("odc-hide-adult") === "1";
+  // Adult content is hidden unless this browser has switched it on ("0").
+  let hideAdult = store.get("odc-hide-adult") !== "0";
   const hideParam = () => (hideAdult ? ADULT_CALL : undefined);
   const adultToggle = () => `<button type="button" class="adult-toggle" data-adult-toggle aria-pressed="${hideAdult}"
       title="${hideAdult ? `Adult content (call ${ADULT_CALL}) is hidden. Click to show it.` : `Hide adult content (call ${ADULT_CALL} and everything under it)`}">
