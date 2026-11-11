@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Domain Catalog</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v=v) }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="icon" href="{{ url_for('static', filename='icons/odc-explorer.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/odc-explorer-256.png') }}">
+</head>
+<body>
+  <header class="topbar" id="topbar" hidden>
+    <a class="wordmark small" href="#/" aria-label="Open Domain Catalog home">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>Open Domain <em>Catalog</em></span>
+    </a>
+    <form class="search" data-search>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input name="q" type="search" placeholder="Go to a call number, e.g. 05 or ABC.DEF.G" autocomplete="off" aria-label="Go to call number">
+      <kbd>/</kbd>
+    </form>
+    <div class="tools">
+      <span data-adult-slot></span>
+      <a class="ipfs-link" href="#/ipfs" title="IPFS node status"><span class="dot" data-reach></span>IPFS</a>
+      <button class="theme" id="theme" type="button" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <aside class="donate" id="donate" aria-label="Support the Open Domain Catalog" hidden></aside>
+  <main id="view" aria-live="polite"></main>
+
+  <script src="{{ url_for('static', filename='app.js', v=v) }}"></script>
+</body>
+</html>

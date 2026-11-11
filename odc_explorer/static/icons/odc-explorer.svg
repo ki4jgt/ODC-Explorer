@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>ODC Explorer</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbf6ec"/>
+      <stop offset="1" stop-color="#ece2cf"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9e3524"/>
+      <stop offset="1" stop-color="#7a2618"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c09538"/>
+      <stop offset="1" stop-color="#9a7428"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#46695a"/>
+      <stop offset="1" stop-color="#33503f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- paper tile -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#tile)"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="55.5" fill="none" stroke="#d6c8ad" stroke-width="3"/>
+
+  <!-- red book -->
+  <rect x="58" y="70" width="40" height="128" rx="5" fill="url(#red)"/>
+  <rect x="58" y="86" width="40" height="7" fill="#f3d9a4" opacity=".55"/>
+  <rect x="58" y="174" width="40" height="7" fill="#f3d9a4" opacity=".55"/>
+
+  <!-- brass book (tallest) -->
+  <rect x="104" y="50" width="40" height="148" rx="5" fill="url(#brass)"/>
+  <rect x="104" y="66" width="40" height="7" fill="#fff4dc" opacity=".6"/>
+  <rect x="116" y="96" width="16" height="36" rx="3" fill="#fff4dc" opacity=".45"/>
+  <rect x="104" y="174" width="40" height="7" fill="#fff4dc" opacity=".6"/>
+
+  <!-- green book, leaning on the brass one -->
+  <g transform="rotate(-13 198 198)">
+    <rect x="164" y="84" width="34" height="114" rx="5" fill="url(#green)"/>
+    <rect x="164" y="100" width="34" height="6" fill="#dbeadf" opacity=".5"/>
+    <rect x="164" y="176" width="34" height="6" fill="#dbeadf" opacity=".5"/>
+  </g>
+
+  <!-- shelf -->
+  <rect x="40" y="198" width="176" height="12" rx="6" fill="#2b2119"/>
+</svg>
