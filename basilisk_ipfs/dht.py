@@ -6,6 +6,7 @@ iterative, parallel lookups. Runs in client mode (it does not answer queries).
 
 import hashlib
 import logging
+import os
 import queue
 import threading
 import time
@@ -100,6 +101,8 @@ class DHT:
         self.rpc_timeout = rpc_timeout
         self.table = {}  # PeerID -> last seen; addresses live in host.peerstore
         self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._maintaining = False
         host.on_connect(self._on_connect)
 
     def _on_connect(self, conn):
@@ -163,6 +166,60 @@ class DHT:
             else:
                 threading.Thread(target=refresh, daemon=True).start()
         return ok
+
+    # ---- keeping the peer set healthy (Kubo's bootstrapper + kad refresh) -------
+    MIN_PEERS = 4             # Kubo Bootstrap.MinPeerThreshold
+    BOOTSTRAP_PERIOD = 30.0   # Kubo bootstrapper period
+    REFRESH_PERIOD = 600.0    # go-libp2p-kad-dht routing table refresh
+
+    def direct_peers(self):
+        return [p for p in self.host.peers()
+                if any(not c.limited for c in self.host.connections(p))]
+
+    def start_maintenance(self):
+        """Background upkeep: below MIN_PEERS direct peers, re-bootstrap (and
+        fall back to recently seen DHT peers); refresh the routing table every
+        REFRESH_PERIOD. Without this, peers that close their side over time
+        are never replaced."""
+        if self._maintaining:
+            return
+        self._maintaining = True
+        threading.Thread(target=self._maintain_loop, daemon=True, name="dht-maintenance").start()
+
+    def _maintain_loop(self):
+        last_refresh = time.monotonic()
+        while not self._stop.wait(self.BOOTSTRAP_PERIOD):
+            try:
+                if len(self.direct_peers()) < self.MIN_PEERS:
+                    log.info("only %d peers connected: re-bootstrapping", len(self.direct_peers()))
+                    if self.bootstrap() < self.MIN_PEERS:
+                        self.reconnect_known()
+                    last_refresh = time.monotonic()
+                elif time.monotonic() - last_refresh >= self.REFRESH_PERIOD:
+                    last_refresh = time.monotonic()
+                    self.find_closest_peers(self.host.peer_id.to_bytes(), timeout=30)
+                    self.find_closest_peers(os.urandom(32), timeout=30)  # a random region
+            except Exception:
+                log.exception("DHT maintenance failed")
+
+    def reconnect_known(self, count=8):
+        """Dial recently seen routing-table peers (useful when the bootstrap
+        peers are unreachable). Returns how many connected."""
+        with self._lock:
+            recent = sorted(self.table, key=self.table.get, reverse=True)
+        todo = [p for p in recent if not self.host.is_connected(p)][:count * 2]
+        ok = 0
+        with ThreadPoolExecutor(8) as ex:
+            for f in as_completed([ex.submit(self.host.connect_peer, p) for p in todo]):
+                try:
+                    f.result()
+                    ok += 1
+                except Exception:
+                    pass
+        return ok
+
+    def stop(self):
+        self._stop.set()
 
     # ---- rpc -------------------------------------------------------------
     def _rpc(self, peer, msg: DHTMessage, expect_reply=True):

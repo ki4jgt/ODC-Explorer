@@ -240,6 +240,7 @@ class IPFSNode:
                 log.warning("could not connect to %s: %s", p, e)
         if self.dht is not None:
             self.dht.bootstrap()
+            self.dht.start_maintenance()
             from .provider import IPNSRepublisher, Provider
             if self._provide_strategy:
                 state = os.path.join(self.repo, "provider.sqlite") if self.repo else None
@@ -264,6 +265,8 @@ class IPFSNode:
             self.nat.close()  # remove router port mappings
         if self.connmgr is not None:
             self.connmgr.close()
+        if self.dht is not None:
+            self.dht.stop()
         self.host.close()
         self.started = False
 

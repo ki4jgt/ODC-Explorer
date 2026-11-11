@@ -253,21 +253,28 @@ class RelayClient:
         return self.host.reachability == PRIVATE
 
     def _candidates(self):
+        """Relays to try: connected peers that offer the hop protocol first,
+        then relays remembered in the peerstore (they will be redialled), so a
+        node that has lost most of its connections can still find relays."""
         if self.static_relays:
             return list(self.static_relays)
         now = time.time()
-        out = []
-        for p in self.host.peers():
-            pi = self.host.peer_info(p)
-            if HOP not in pi.protocols or p in self.reservations:
+        connected, known = [], []
+        with self.host._lock:
+            peerstore = list(self.host.peerstore.items())
+        for p, pi in peerstore:
+            if HOP not in pi.protocols or p in self.reservations or p == self.host.peer_id:
                 continue
             if now - self._failed.get(p, 0) < 3600:
                 continue
             conns = self.host.connections(p)
             if conns and not conns[0].limited:
-                out.append(p)
-        random.shuffle(out)
-        return out
+                connected.append(p)
+            elif pi.addrs:
+                known.append(p)
+        random.shuffle(connected)
+        random.shuffle(known)
+        return connected + known[:8]
 
     def maintain(self):
         """Refresh expiring reservations, drop dead ones, add new ones."""
@@ -275,7 +282,7 @@ class RelayClient:
         with self._lock:
             current = list(self.reservations.values())
         for r in current:
-            if r.conn.closed or (self.keepalive and not r.conn.session.ping(timeout=10)):
+            if r.conn.closed or (self.keepalive and not self._alive(r.conn)):
                 with self._lock:
                     self.reservations.pop(r.relay, None)
                 self._publish()
@@ -304,6 +311,16 @@ class RelayClient:
                 pid = relay.peer_id if isinstance(relay, Multiaddr) else relay
                 if pid is not None:
                     self._failed[pid] = time.time()
+
+    def _alive(self, conn):
+        """Keep the relay connection busy and check it with a real libp2p ping
+        (works on every transport; quiet connections get closed by NATs and
+        idle timeouts, and the reservation dies with the connection)."""
+        try:
+            return bool(self.host.ping(conn, 1))
+        except Exception as e:
+            log.info("relay %s stopped answering: %s", conn.remote_peer, e)
+            return False
 
     def _loop(self):
         while not self._stop.is_set():

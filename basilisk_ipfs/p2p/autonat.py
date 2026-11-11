@@ -103,6 +103,7 @@ class AutoNATClient:
         self.timeout = timeout
         self._pending = {}           # nonce -> threading.Event
         self._results = {}           # Multiaddr -> list of (server, bool), newest last
+        self._checked = {}           # Multiaddr -> time of last check round
         self._lock = threading.Lock()
         self._wake = threading.Event()
         self._stop = threading.Event()
@@ -201,15 +202,27 @@ class AutoNATClient:
         servers = self.servers()
         random.shuffle(servers)
         requests = 0
+        now = time.time()
         for addr in am.candidates():
-            if self.status_of(addr) != UNKNOWN:
+            decided = self.status_of(addr) != UNKNOWN
+            recheck = decided and now - self._checked.get(addr, 0) >= self.interval
+            if decided and not recheck:
                 continue
+            self._checked[addr] = now
+            fresh = 0
             for server in servers:
-                if requests >= max_requests or self.status_of(addr) != UNKNOWN:
+                if requests >= max_requests:
                     break
-                with self._lock:
-                    if any(s == server for s, _ in self._results.get(addr, [])):
-                        continue
+                if recheck:
+                    # re-verify, keeping the old verdict until new results outweigh it
+                    if fresh >= self.confidence:
+                        break
+                elif self.status_of(addr) != UNKNOWN:
+                    break
+                else:
+                    with self._lock:
+                        if any(s == server for s, _ in self._results.get(addr, [])):
+                            continue
                 requests += 1
                 try:
                     res = self.check_address(server, addr)
@@ -218,6 +231,7 @@ class AutoNATClient:
                     continue
                 if res is not None:
                     self._record(addr, server, res)
+                    fresh += 1
         self._publish()
 
     def _publish(self):
@@ -236,14 +250,9 @@ class AutoNATClient:
                 except Exception:
                     log.exception("autonat check failed")
             undecided = any(self.status_of(a) == UNKNOWN for a in self.host.addr_manager.candidates())
-            if not undecided:
-                # spec: recheck periodically; forget old verdicts so they are retested
-                self._wake.wait(self.interval)
-                if not self._wake.is_set():
-                    with self._lock:
-                        self._results.clear()
-            else:
-                self._wake.wait(self.retry)
+            # spec: recheck periodically (check() re-verifies decided addresses
+            # once ``interval`` has passed, without discarding their verdicts)
+            self._wake.wait(self.retry if undecided else min(self.interval, 300))
             self._wake.clear()
 
 
